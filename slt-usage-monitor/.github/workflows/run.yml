@@ -1,0 +1,38 @@
+name: SLT Usage Monitor
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r slt-usage-monitor/requirements.txt
+          playwright install chromium
+
+      - name: Run SLT fetch script
+        env:
+          SLT_USER: ${{ secrets.SLT_USER }}
+          SLT_PASS: ${{ secrets.SLT_PASS }}
+          STORAGE_STATE_PATH: storage_state.json
+        run: python slt-usage-monitor/fetch.py
+
+      - name: Upload screenshot artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slt-debug
+          path: slt_debug_*.png
