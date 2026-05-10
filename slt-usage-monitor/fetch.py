@@ -10,6 +10,8 @@ SLT_URL = "https://www.myslt.lk/"
 STORAGE_STATE_PATH = os.environ.get("STORAGE_STATE_PATH", "storage_state.json")
 SCREENSHOT_PATH = Path("slt_debug.png")
 HISTORY_PATH = Path("storage.json")
+HTML_PATH = Path("slt_debug.html")
+META_PATH = Path("slt_debug_meta.json")
 
 
 def try_selectors(page, selectors):
@@ -66,6 +68,18 @@ def append_history_entry(entry):
     HISTORY_PATH.write_text(json.dumps(history, indent=2), encoding="utf-8")
 
 
+def write_debug_metadata(url, title, body_text, usage_summary):
+    payload = {
+        "url": url,
+        "title": title,
+        "body_text_length": len(body_text),
+        "body_text_sample": body_text[:1000],
+        "usage_summary": usage_summary,
+        "captured_at_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    META_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 def main():
     user = os.environ.get("SLT_USER")
     password = os.environ.get("SLT_PASS")
@@ -75,9 +89,15 @@ def main():
 
         context = browser.new_context()
         page = context.new_page()
+        page.set_viewport_size({"width": 1440, "height": 1400})
 
         try:
             page.goto(SLT_URL, wait_until="domcontentloaded", timeout=60000)
+            try:
+                page.wait_for_load_state("networkidle", timeout=30000)
+            except Exception:
+                pass
+            page.wait_for_timeout(5000)
             print("SLT portal loaded successfully")
 
             # Phase 2 skeleton: attempt login if credentials are present.
@@ -125,13 +145,19 @@ def main():
             else:
                 print("No SLT credentials provided - running in safe mode")
 
-            page.wait_for_timeout(2000)
-
             page_text = ""
             try:
                 page_text = page.locator("body").inner_text(timeout=10000)
             except Exception as exc:
                 print(f"Unable to read page body text for extraction: {exc}")
+
+            page_html = ""
+            try:
+                page_html = page.content()
+                HTML_PATH.write_text(page_html, encoding="utf-8")
+                print(f"Saved page HTML to {HTML_PATH}")
+            except Exception as exc:
+                print(f"Unable to save page HTML: {exc}")
 
             usage_summary = extract_usage_summary(page_text) if page_text else {}
             if usage_summary:
@@ -140,6 +166,14 @@ def main():
                     print(f"  {key}: {value}")
             else:
                 print("No usage summary detected yet; page content will still be stored in history")
+
+            print(f"Page URL: {page.url}")
+            print(f"Page title: {page.title()}")
+            if page_text:
+                print(f"Body text sample: {page_text[:300].replace(chr(10), ' ')}")
+
+            write_debug_metadata(page.url, page.title(), page_text, usage_summary)
+            print(f"Saved debug metadata to {META_PATH}")
 
             history_entry = {
                 "date": datetime.now(timezone.utc).date().isoformat(),
