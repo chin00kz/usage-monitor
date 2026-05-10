@@ -1,12 +1,14 @@
 SLT Usage Monitor (Playwright + GitHub Actions)
 
 This project provides an initial safe-mode Playwright script that loads the SLT MySLT portal and saves a screenshot for debugging.
+It now also tries a lightweight text-based extraction of usage values and appends daily snapshots to `storage.json`.
 
 Files:
 - .github/workflows/run.yml — GitHub Actions workflow (runs every 6 hours)
 - fetch.py — Playwright script (safe-mode)
 - requirements.txt — Python dependencies
 - storage.json — optional history file
+- storage.json — daily snapshot history
 
 Optional environment variables (used in Phase 2 login skeleton):
 - `SLT_USER` — SLT username (set as GitHub Secret `SLT_USER`)
@@ -25,3 +27,4 @@ Notes:
 - This is Phase 1 (safe mode). It only opens the SLT portal and captures `slt_debug.png`.
 - Do not hardcode credentials; Phase 2 will add secure login handling via GitHub Secrets.
  - If you set `SLT_USER` and `SLT_PASS` as repository Secrets, the workflow will attempt a login skeleton and save a `storage_state.json` file for reuse in later phases.
+- The workflow also uploads `storage.json` so you can inspect the accumulated history from each run.

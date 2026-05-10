@@ -38,4 +38,5 @@ jobs:
           name: slt-debug
           path: |
             slt_debug.png
+            storage.json
             storage_state.json
